@@ -9,7 +9,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import logging
 
-# 設定 Log
+# Log Setting
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -17,24 +17,24 @@ class GoogleMapsScraper:
     def __init__(self, headless=True):
         self.options = Options()
         
-        # --- 關鍵修改：Docker 環境必備的防崩潰參數 ---
+        # --- Docker envioriment parameter ---
         if headless:
             self.options.add_argument("--headless=new") 
         
-        self.options.add_argument("--no-sandbox") # Docker 裡必備：停用沙箱
-        self.options.add_argument("--disable-dev-shm-usage") # Docker 裡必備：解決共享記憶體不足
-        self.options.add_argument("--disable-gpu") # 伺服器沒有 GPU，必須停用
+        self.options.add_argument("--no-sandbox") 
+        self.options.add_argument("--disable-dev-shm-usage") 
+        self.options.add_argument("--disable-gpu") 
         self.options.add_argument("--window-size=1920,1080")
-        self.options.add_argument("--disable-extensions") # 停用擴充功能省資源
+        self.options.add_argument("--disable-extensions")
         self.options.add_argument("--disable-infobars")
-        self.options.add_argument("--remote-debugging-port=9222") # 解決 DevToolsActivePort 錯誤
+        self.options.add_argument("--remote-debugging-port=9222")
         
-        # 偽裝設定
+   
         self.options.add_argument("--lang=zh-TW")
         self.options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         self.options.add_experimental_option("excludeSwitches", ["enable-automation"])
         
-        logger.info("🔧 [Scraper] Initializing Chrome Driver with anti-crash flags...")
+        logger.info("🔧 [Scraper] Initializing Chrome Driver...")
         
         try:
             self.driver = webdriver.Chrome(
@@ -54,7 +54,6 @@ class GoogleMapsScraper:
             self.driver.get(search_url)
             wait = WebDriverWait(self.driver, 10)
             
-            # 嘗試點擊第一個結果
             try:
                 if "/maps/place/" in self.driver.current_url:
                     logger.info("   ✨ Already on detail page")
@@ -64,3 +63,38 @@ class GoogleMapsScraper:
                     first_result.click()
                     time.sleep(3)
             except Exception as e:
+                logger.warning(f"   ⚠️ Click skipped or failed: {e}")
+
+            time.sleep(5)
+            logger.info("   👀 [3/3] Analyzing page...")
+            
+            full_text = self.driver.find_element(By.TAG_NAME, "body").text
+            
+            if "即時" in full_text:
+                logger.info("   🎯 Live data found!")
+                if "不如平常繁忙" in full_text or "不太忙" in full_text or "人潮不多" in full_text: return 2
+                if "略微繁忙" in full_text or "有點忙" in full_text: return 3
+                if "比平常繁忙" in full_text or "很忙" in full_text or "繁忙" in full_text: return 4
+                return 3
+            
+            if "通常" in full_text and "忙" in full_text:
+                logger.info("   ⚠️ Historical data only")
+                if "通常不太忙" in full_text: return 2
+                if "通常有點忙" in full_text: return 3
+                if "通常很忙" in full_text: return 5
+                return 3
+
+            logger.info("   ⚠️ No data found")
+            return 0
+
+        except Exception as e:
+            logger.error(f"   ❌ Scraping error: {e}")
+            return 0
+
+    def close(self):
+        if hasattr(self, 'driver'):
+            self.driver.quit()
+
+if __name__ == "__main__":
+    scraper = GoogleMapsScraper(headless=False)
+    scraper.close()
