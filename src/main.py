@@ -95,8 +95,8 @@ def on_startup():
     # Add the job to run every 60 minutes
     # (For testing, you can change 'minutes=60' to 'seconds=30')
     #scheduler.add_job(scheduled_update_task, 'interval', minutes=60)
-    scheduler.add_job(scheduled_update_task, 'interval', seconds=30)
-    scheduler.start()
+    #scheduler.add_job(scheduled_update_task, 'interval', seconds=30)
+    #scheduler.start()
     logger.info("🚀 Scheduler started! Background tasks active.")
 
 @app.on_event("shutdown")
