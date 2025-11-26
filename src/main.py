@@ -16,7 +16,7 @@ from src.database import models
 from src import schemas
 from src.scrapers.google_maps import GoogleMapsScraper
 
-# Setup Logging (嚴謹的專案要有 Log 紀錄)
+# Setup Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -135,3 +135,74 @@ def update_nearby_restaurants(
     # (Logic same as before, simplified for brevity in this final version)
     # You can paste the previous logic here if needed, or rely on the background scheduler.
     return {"message": "Manual update triggered (Not fully implemented in this snippet to save space)"}
+
+@app.post("/seed")
+def seed_database(db: Session = Depends(get_db)):
+
+    if db.query(models.Restaurant).count() > 0:
+        return {"status": "skipped", "message": "資料庫已經有資料了，跳過注入。"}
+
+    print("🌱 開始注入種子數據...")
+
+    initial_data = [
+        {
+            "name": "Starbucks 台北 101 35F",
+            "address": "台北市信義區信義路五段7號35樓",
+            "latitude": 25.033964, "longitude": 121.564472,
+            "place_id": "ChIJmQQiTcupQjQRz5yu0p_u4hQ",
+            "rating": 4.3, "crowd_level": 4
+        },
+        {
+            "name": "一蘭拉麵 台北本店",
+            "address": "台北市信義區松仁路97號",
+            "latitude": 25.035515, "longitude": 121.568296,
+            "place_id": "ChIJ7Qqq0sypQjQR6s-t5C5q6z4",
+            "rating": 4.7, "crowd_level": 5
+        },
+        {
+            "name": "Louisa Coffee 路易莎咖啡 (信義松仁店)",
+            "address": "台北市信義區松仁路100號",
+            "latitude": 25.036123, "longitude": 121.567123,
+            "place_id": "ChIJ_z8_8cqpQjQR8y5x1j2o1fA",
+            "rating": 4.1, "crowd_level": 2
+        },
+        {
+            "name": "宮原眼科 (台中)",
+            "address": "台中市中區中山路20號",
+            "latitude": 24.137512, "longitude": 120.683456,
+            "place_id": "ChIJkb-S4oYZaDQR8s5y2j3o1gB",
+            "rating": 4.6, "crowd_level": 5
+        },
+        {
+            "name": "Solidbean Coffee Roasters (台中)",
+            "address": "台中市西區精誠三街28號",
+            "latitude": 24.156123, "longitude": 120.658123,
+            "place_id": "ChIJlb-S4oYZaDQR9s5y2j3o1gC",
+            "rating": 4.8, "crowd_level": 1
+        }
+    ]
+
+    added_count = 0
+    try:
+        for item in initial_data:
+            exists = db.query(models.Restaurant).filter(models.Restaurant.place_id == item["place_id"]).first()
+            if not exists:
+                new_restaurant = models.Restaurant(
+                    name=item["name"],
+                    address=item["address"],
+                    latitude=item["latitude"],
+                    longitude=item["longitude"],
+                    place_id=item["place_id"],
+                    rating=item["rating"],
+                    crowd_level=item["crowd_level"],
+                    updated_at=datetime.utcnow()
+                )
+                db.add(new_restaurant)
+                added_count += 1
+        
+        db.commit()
+        return {"status": "success", "message": f"成功注入 {added_count} 筆種子數據！"}
+        
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
