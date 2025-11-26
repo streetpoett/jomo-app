@@ -259,8 +259,10 @@ def seed_database(db: Session = Depends(get_db)):
 
 @app.on_event("shutdown")
 def on_shutdown():
+    """App shutdown: Stop Scheduler."""
     try:
         scheduler.shutdown()
     except Exception:
         pass
-    logger.info("🛑 Scheduler shut down.")
+
+    print("🛑 Scheduler shut down (or was not running).")

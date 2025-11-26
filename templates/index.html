@@ -6,278 +6,351 @@
     <title>JOMO | 尋找你的隱形斗篷</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #e67e22;
-            --bg-color: #fdfbf7; /* 溫暖的米白色 */
-            --glass-bg: rgba(255, 255, 255, 0.9);
-            --shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --bg: #f8f9fa;
+            --card-bg: rgba(255, 255, 255, 0.98);
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-hard: 0 10px 40px rgba(0,0,0,0.15);
         }
 
         body { 
             margin: 0; padding: 0; 
             font-family: 'Noto Sans TC', sans-serif; 
-            background-color: var(--bg-color);
-            color: var(--primary-color);
-            overflow: hidden; /* 防止捲動 */
+            background: var(--bg); color: var(--primary);
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- 1. 首頁 (Landing Page) --- */
-        #landing-page {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; 
-            justify-content: center; align-items: center;
-            background: linear-gradient(135deg, #fdfbf7 0%, #eef2f3 100%);
-            z-index: 2000;
-            transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-        }
+        /* --- 地圖層 --- */
+        #map { height: 100vh; width: 100%; z-index: 1; }
 
-        .logo-container {
-            text-align: center; margin-bottom: 40px;
-        }
-
-        .logo-text {
-            font-size: 3.5rem; font-weight: 800; letter-spacing: 2px;
-            color: var(--primary-color); margin: 0;
-        }
-
-        .slogan {
-            font-size: 1.1rem; color: #7f8c8d; margin-top: 10px; font-weight: 400;
-        }
-
-        .category-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
-            width: 85%; max-width: 400px;
-        }
-
-        .cat-card {
-            background: white; border-radius: 20px;
-            padding: 20px; text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            cursor: pointer; transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-
-        .cat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            border-color: var(--primary-color);
-        }
-
-        .cat-emoji { font-size: 2rem; display: block; margin-bottom: 10px; }
-        .cat-name { font-weight: 700; color: var(--primary-color); }
-
-        /* --- 2. 地圖介面 (Map Interface) --- */
-        #app-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            opacity: 0; visibility: hidden; /* 預設隱藏 */
-            transition: opacity 0.5s ease;
-        }
-
-        #map { height: 100%; width: 100%; z-index: 1; }
-
-        /* 頂部浮動導航列 */
+        /* --- 頂部導航 (Glassmorphism) --- */
         .top-bar {
-            position: absolute; top: 20px; left: 50%; 
-            transform: translateX(-50%);
-            width: 90%; max-width: 600px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(8px);
-            border-radius: 50px;
-            padding: 10px 20px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: var(--shadow);
-            z-index: 1000;
+            position: absolute; top: 0; left: 0; width: 100%;
+            padding: 50px 20px 15px 20px; /* 預留手機瀏海空間 */
+            background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 100%);
+            display: flex; flex-direction: column; gap: 15px;
+            z-index: 100; pointer-events: none; /* 讓點擊穿透到地圖 */
         }
 
-        .mini-logo { font-weight: 800; font-size: 1.2rem; cursor: pointer; }
-        
+        .search-row {
+            display: flex; align-items: center; gap: 10px; pointer-events: auto;
+        }
+
+        .logo-badge {
+            background: var(--primary); color: white;
+            padding: 8px 16px; border-radius: 30px;
+            font-weight: 800; font-size: 1.1rem;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .view-switch {
+            background: white; border-radius: 30px;
+            padding: 5px; display: flex;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .switch-btn {
+            border: none; background: transparent;
+            padding: 8px 12px; border-radius: 20px;
+            cursor: pointer; display: flex; align-items: center; gap: 5px;
+            font-size: 0.9rem; color: #999; transition: 0.2s;
+        }
+        .switch-btn.active { background: var(--primary); color: white; }
+
+        /* 橫向捲動篩選列 */
         .filter-scroll {
             display: flex; gap: 10px; overflow-x: auto; 
-            padding: 5px; margin-left: 15px;
-            scrollbar-width: none; /* Firefox */
+            pointer-events: auto; padding-bottom: 5px;
+            scrollbar-width: none;
         }
-        .filter-scroll::-webkit-scrollbar { display: none; } /* Chrome */
+        .filter-scroll::-webkit-scrollbar { display: none; }
 
         .chip {
-            background: transparent; border: 1px solid #ddd;
-            padding: 6px 14px; border-radius: 20px;
-            font-size: 0.85rem; color: #666; cursor: pointer;
-            white-space: nowrap; transition: 0.2s;
+            background: white; border: 1px solid #eee;
+            padding: 8px 16px; border-radius: 20px;
+            font-size: 0.9rem; color: #555; white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; gap: 5px;
         }
         .chip.active {
-            background: var(--primary-color); color: white; border-color: var(--primary-color);
+            background: var(--primary); color: white; border-color: var(--primary);
+            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(44, 62, 80, 0.3);
         }
 
-        /* 底部功能區 */
-        .bottom-controls {
+        /* --- 底部資訊卡片 (Bottom Sheet) --- */
+        #bottom-sheet {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: var(--card-bg);
+            border-radius: 24px 24px 0 0;
+            box-shadow: var(--shadow-hard);
+            transform: translateY(110%); /* 預設隱藏 */
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1000; padding-bottom: 20px;
+        }
+        #bottom-sheet.show { transform: translateY(0); }
+
+        .sheet-handle {
+            width: 40px; height: 5px; background: #ddd;
+            border-radius: 5px; margin: 12px auto;
+        }
+
+        .sheet-content { padding: 0 25px 25px 25px; }
+
+        .place-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; }
+        .place-name { font-size: 1.4rem; font-weight: 700; margin: 0; color: #333; }
+        .place-type { font-size: 0.85rem; color: #888; background: #f0f0f0; padding: 4px 8px; border-radius: 6px; }
+
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 8px;
+            font-weight: 500; font-size: 0.95rem; margin-bottom: 20px;
+        }
+        .status-badge.green { background: #e8f5e9; color: #2e7d32; }
+        .status-badge.orange { background: #fff3e0; color: #ef6c00; }
+        .status-badge.red { background: #ffebee; color: #c62828; }
+
+        .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .action-btn {
+            border: none; padding: 12px; border-radius: 12px;
+            font-size: 1rem; font-weight: 600; cursor: pointer;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            transition: 0.1s;
+        }
+        .btn-nav { background: var(--primary); color: white; }
+        .btn-book { background: #f0f0f0; color: #333; }
+        .action-btn:active { transform: scale(0.96); }
+
+        /* --- 列表模式 (List View) --- */
+        #list-view {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f8f9fa; z-index: 50;
+            padding-top: 130px; /* 避開頂部導航 */
+            display: none; opacity: 0;
+            transition: opacity 0.3s;
+            overflow-y: auto;
+        }
+        #list-view.active { display: block; opacity: 1; }
+
+        .list-item {
+            background: white; margin: 15px 20px; padding: 20px;
+            border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer;
+        }
+        .list-info h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
+        .list-meta { font-size: 0.85rem; color: #666; display: flex; gap: 10px; }
+
+        /* 浮動按鈕 */
+        .fab-myloc {
             position: absolute; bottom: 30px; right: 20px;
-            display: flex; flex-direction: column; gap: 15px;
-            z-index: 1000;
-        }
-
-        .fab-btn {
             width: 50px; height: 50px; border-radius: 50%;
-            background: var(--primary-color); color: white;
-            border: none; box-shadow: var(--shadow);
-            font-size: 1.4rem; cursor: pointer;
+            background: white; border: none; box-shadow: var(--shadow-hard);
+            color: var(--primary); font-size: 24px;
             display: flex; justify-content: center; align-items: center;
-            transition: transform 0.1s;
+            z-index: 500; cursor: pointer;
         }
-        .fab-btn:active { transform: scale(0.9); }
-        
-        /* 隱藏預設的 Leaflet 版權文字，讓畫面更乾淨 (可選) */
-        .leaflet-control-attribution { font-size: 9px !important; opacity: 0.6; }
-
     </style>
 </head>
 <body>
 
-    <div id="landing-page">
-        <div class="logo-container">
-            <h1 class="logo-text">🤫 JOMO</h1>
-            <p class="slogan">Joy Of Missing Out.<br>尋找城市裡的靜謐角落。</p>
+    <div class="top-bar">
+        <div class="search-row">
+            <div class="logo-badge">JOMO</div>
+            <div style="flex:1;"></div>
+            <div class="view-switch">
+                <button class="switch-btn active" onclick="switchView('map')">
+                    <span class="material-icons-round" style="font-size:18px">map</span> 地圖
+                </button>
+                <button class="switch-btn" onclick="switchView('list')">
+                    <span class="material-icons-round" style="font-size:18px">list</span> 列表
+                </button>
+            </div>
         </div>
 
-        <div class="category-grid">
-            <div class="cat-card" onclick="enterApp('cafe')">
-                <span class="cat-emoji">☕</span>
-                <span class="cat-name">安靜咖啡</span>
-            </div>
-            <div class="cat-card" onclick="enterApp('work')">
-                <span class="cat-emoji">💻</span>
-                <span class="cat-name">讀書工作</span>
-            </div>
-            <div class="cat-card" onclick="enterApp('food')">
-                <span class="cat-emoji">🍜</span>
-                <span class="cat-name">不用排隊</span>
-            </div>
-            <div class="cat-card" onclick="enterApp('all')">
-                <span class="cat-emoji">🗺️</span>
-                <span class="cat-name">探索地圖</span>
-            </div>
+        <div class="filter-scroll">
+            <div class="chip active" onclick="filterCategory('all', this)">✨ 全部</div>
+            <div class="chip" onclick="filterCategory('cafe', this)">☕ 咖啡廳</div>
+            <div class="chip" onclick="filterCategory('food', this)">🍜 吃美食</div>
+            <div class="chip" onclick="filterCategory('work', this)">💻 去工作</div>
+            <div class="chip" onclick="filterCategory('bar', this)">🍸 喝一杯</div>
         </div>
     </div>
 
-    <div id="app-container">
-        
-        <div class="top-bar">
-            <div class="mini-logo" onclick="goHome()">JOMO</div>
-            <div class="filter-scroll">
-                <div class="chip" onclick="filterCategory('all', this)">全部</div>
-                <div class="chip" onclick="filterCategory('cafe', this)">☕ 咖啡</div>
-                <div class="chip" onclick="filterCategory('food', this)">🍜 美食</div>
-                <div class="chip" onclick="filterCategory('work', this)">💻 工作</div>
+    <div id="map"></div>
+    <button class="fab-myloc" onclick="locateUser()"><span class="material-icons-round">my_location</span></button>
+
+    <div id="list-view">
+        </div>
+
+    <div id="bottom-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-content">
+            <div class="place-header">
+                <h2 class="place-name" id="sheet-name">店名載入中...</h2>
+                <span class="place-type" id="sheet-type">類別</span>
+            </div>
+            
+            <div id="sheet-status" class="status-badge green">
+                <span class="material-icons-round">check_circle</span> 
+                <span>載入中...</span>
+            </div>
+            
+            <div class="action-row">
+                <button class="action-btn btn-nav" id="btn-nav" onclick="">
+                    <span class="material-icons-round">near_me</span> 導航
+                </button>
+                <button class="action-btn btn-book" id="btn-book" onclick="">
+                    <span class="material-icons-round">calendar_today</span> 訂位
+                </button>
             </div>
         </div>
-
-        <div class="bottom-controls">
-            <button class="fab-btn" onclick="locateUser()">🎯</button>
-        </div>
-
-        <div id="map"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // --- 邏輯部分 ---
-        
-        // 1. 初始化地圖 (使用更有質感的 CartoDB Voyager 圖層)
+        // --- 初始化地圖 ---
         var map = L.map('map', {zoomControl: false}).setView([25.0339, 121.5644], 14);
-        
-        // *關鍵改變*：更換地圖風格
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
+            attribution: '© CARTO', maxZoom: 20
         }).addTo(map);
 
-        // 自定義圖標
-        var commonSettings = { shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] };
-        var greenIcon = new L.Icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', ...commonSettings});
-        var goldIcon = new L.Icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png', ...commonSettings});
-        var redIcon = new L.Icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', ...commonSettings});
-        var greyIcon = new L.Icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png', ...commonSettings});
-        var userIcon = L.divIcon({ className: 'user-marker', html: '<div style="width: 15px; height: 15px; background: #2c3e50; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></div>', iconSize: [20, 20] });
-
+        // --- 全域變數 ---
+        var allData = [];
         var markersLayer = L.layerGroup().addTo(map);
-        var allRestaurants = [];
+        var currentCategory = 'all';
 
-        // 2. 進入 App 流程
-        function enterApp(category) {
-            // 隱藏首頁，顯示地圖
-            document.getElementById('landing-page').style.transform = 'translateY(-100%)';
-            document.getElementById('app-container').style.visibility = 'visible';
-            document.getElementById('app-container').style.opacity = '1';
-            
-            // 修正 Leaflet 在隱藏 div 重新顯示時的大小問題
-            setTimeout(() => { map.invalidateSize(); }, 300);
+        // --- Icon 定義 ---
+        var createIcon = (colorUrl) => new L.Icon({
+            iconUrl: colorUrl,
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], shadowSize: [41, 41]
+        });
+        var icons = {
+            green: createIcon('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'),
+            gold: createIcon('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png'),
+            red: createIcon('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png'),
+            grey: createIcon('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png')
+        };
+        var userIcon = L.divIcon({ className: 'user-marker', html: '<div style="width:16px;height:16px;background:#2c3e50;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(0,0,0,0.3);"></div>', iconSize: [22, 22] });
 
-            // 自動點選對應的篩選器
-            var chipToClick = document.querySelector(`.chip[onclick*="'${category}'"]`);
-            if (!chipToClick) chipToClick = document.querySelector(`.chip[onclick*="'all'"]`);
-            
-            filterCategory(category, chipToClick);
+        // --- 核心功能 ---
+
+        function getCrowdMeta(level) {
+            if (level <= 2) return { text: "非常舒適", colorClass: "green", icon: icons.green };
+            if (level <= 4) return { text: "有點人潮", colorClass: "orange", icon: icons.gold };
+            if (level >= 5) return { text: "人潮爆滿", colorClass: "red", icon: icons.red };
+            return { text: "狀態未知", colorClass: "orange", icon: icons.grey };
         }
 
-        function goHome() {
-            document.getElementById('landing-page').style.transform = 'translateY(0)';
-            document.getElementById('app-container').style.opacity = '0';
-            setTimeout(() => { document.getElementById('app-container').style.visibility = 'hidden'; }, 500);
-        }
+        // 1. 下載資料
+        fetch('/restaurants').then(r => r.json()).then(data => {
+            allData = data;
+            renderData(); // 初始渲染
+        });
 
-        // 3. 篩選與標記
-        function filterCategory(category, chip) {
-            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            if(chip) chip.classList.add('active');
-
+        // 2. 渲染邏輯 (同時更新地圖和列表)
+        function renderData() {
             markersLayer.clearLayers();
-            allRestaurants.forEach(r => {
-                // 如果分類符合 (相容舊資料的 fallback)
+            const listContainer = document.getElementById('list-view');
+            listContainer.innerHTML = ""; // 清空列表
+
+            allData.forEach(r => {
                 var rType = r.type || 'other';
-                if (category === 'all' || rType === category) {
-                    addMarker(r);
-                }
+                if (currentCategory !== 'all' && rType !== currentCategory) return;
+
+                // A. 加地圖標記
+                const meta = getCrowdMeta(r.crowd_level);
+                const marker = L.marker([r.latitude, r.longitude], {icon: meta.icon})
+                    .on('click', () => openBottomSheet(r, meta)); // 點擊不跳 Popup，改跳 Bottom Sheet
+                markersLayer.addLayer(marker);
+
+                // B. 加列表項目
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div class="list-info">
+                        <h3>${r.name}</h3>
+                        <div class="list-meta">
+                            <span style="color:${meta.colorClass === 'green' ? '#27ae60' : meta.colorClass === 'red' ? '#c0392b' : '#f39c12'}">● ${meta.text}</span>
+                            <span>⭐ ${r.rating}</span>
+                        </div>
+                    </div>
+                    <span class="material-icons-round" style="color:#ddd">chevron_right</span>
+                `;
+                item.onclick = () => { 
+                    switchView('map'); // 切回地圖
+                    map.flyTo([r.latitude, r.longitude], 16); // 飛過去
+                    openBottomSheet(r, meta); // 打開卡片
+                };
+                listContainer.appendChild(item);
             });
         }
 
-        function getIcon(level) {
-            var lvl = parseInt(level);
-            if (isNaN(lvl) || lvl === 0) return greyIcon;
-            if (lvl <= 2) return greenIcon;
-            if (lvl <= 4) return goldIcon;
-            return redIcon;
-        }
-
-        function getStatusText(level) {
-            if (level <= 2) return "🟢 舒適";
-            if (level <= 4) return "🟠 普通";
-            if (level >= 5) return "🔴 擁擠";
-            return "⚪ 未知";
-        }
-
-        function addMarker(r) {
-            var marker = L.marker([r.latitude, r.longitude], {icon: getIcon(r.crowd_level)});
-            var navUrl = `http://googleusercontent.com/maps.google.com/?q=${r.latitude},${r.longitude}`;
+        // 3. 打開底部卡片 (核心體驗)
+        function openBottomSheet(r, meta) {
+            document.getElementById('sheet-name').innerText = r.name;
+            document.getElementById('sheet-type').innerText = r.type ? r.type.toUpperCase() : 'PLACE';
             
-            marker.bindPopup(`
-                <div style="font-family: 'Noto Sans TC';">
-                    <h3 style="margin: 0 0 5px 0; color: #2c3e50;">${r.name}</h3>
-                    <p style="margin: 0 0 10px 0; color: #7f8c8d; font-size: 0.9rem;">
-                        ⭐ ${r.rating} | ${getStatusText(r.crowd_level)}
-                    </p>
-                    <a href="${navUrl}" target="_blank" style="display:block; text-align:center; background:#2c3e50; color:white; padding:8px; border-radius:8px; text-decoration:none;">
-                        🚗 Google 導航
-                    </a>
-                </div>
-            `);
-            markersLayer.addLayer(marker);
+            // 設定狀態徽章
+            const badge = document.getElementById('sheet-status');
+            badge.className = `status-badge ${meta.colorClass}`;
+            badge.innerHTML = `<span class="material-icons-round">analytics</span> ${meta.text} (Level ${r.crowd_level})`;
+
+            // 設定按鈕連結
+            const navUrl = `http://googleusercontent.com/maps.google.com/?q=${r.latitude},${r.longitude}`;
+            document.getElementById('btn-nav').onclick = () => window.open(navUrl, '_blank');
+            
+            // 處理訂位按鈕
+            const bookBtn = document.getElementById('btn-book');
+            if (r.booking_url) {
+                bookBtn.style.display = 'flex';
+                bookBtn.onclick = () => window.open(r.booking_url, '_blank');
+            } else {
+                bookBtn.style.display = 'none'; // 沒連結就隱藏
+            }
+
+            // 顯示卡片
+            document.getElementById('bottom-sheet').classList.add('show');
         }
 
+        // 點擊地圖其他地方，關閉卡片
+        map.on('click', () => {
+            document.getElementById('bottom-sheet').classList.remove('show');
+        });
+
+        // 4. 切換分類
+        function filterCategory(cat, btn) {
+            currentCategory = cat;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            renderData();
+        }
+
+        // 5. 切換視圖 (地圖/列表)
+        function switchView(mode) {
+            document.querySelectorAll('.switch-btn').forEach(b => b.classList.remove('active'));
+            // 簡單判斷哪顆按鈕要亮
+            const iconName = mode === 'map' ? 'map' : 'list';
+            const targetBtn = Array.from(document.querySelectorAll('.switch-btn')).find(b => b.innerHTML.includes(iconName));
+            if(targetBtn) targetBtn.classList.add('active');
+
+            if (mode === 'list') {
+                document.getElementById('list-view').classList.add('active');
+                document.getElementById('bottom-sheet').classList.remove('show'); // 列表時不顯示卡片
+            } else {
+                document.getElementById('list-view').classList.remove('active');
+            }
+        }
+
+        // 6. 定位
         function locateUser() {
             if (!navigator.geolocation) return alert("無法定位");
             navigator.geolocation.getCurrentPosition(pos => {
@@ -285,12 +358,6 @@
                 L.marker([pos.coords.latitude, pos.coords.longitude], {icon: userIcon}).addTo(map);
             });
         }
-
-        // Fetch Data
-        fetch('/restaurants').then(res => res.json()).then(data => {
-            allRestaurants = data;
-        });
-
     </script>
 </body>
 </html>
