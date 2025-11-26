@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JOMO | 享受獨處地圖</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        
+        /* JOMO Style: Darker, minimalist header */
+        .header-card {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 15px 20px; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border-left: 6px solid #2c3e50; /* Dark Blue/Grey Identity */
+            backdrop-filter: blur(5px);
+        }
+
+        .legend {
+            position: absolute; bottom: 30px; right: 20px; z-index: 1000;
+            background: white; padding: 10px; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 0.9rem;
+        }
+        .dot { height: 10px; width: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; }
+
+        .locate-btn {
+            position: absolute; bottom: 140px; right: 20px; z-index: 1000;
+            background: #2c3e50; color: white; /* Dark theme button */
+            width: 50px; height: 50px; border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 1.5rem; border: none;
+            transition: transform 0.1s;
+        }
+        .locate-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <div class="header-card">
+        <h2 style="margin:0; color: #2c3e50; font-weight: 800; letter-spacing: 1px;">
+            🤫 JOMO
+        </h2>
+        <p style="margin:5px 0 0 0; color:#555; font-size: 0.85rem;">
+            Joy Of Missing Out<br>
+            尋找你的隱形斗篷
+        </p>
+    </div>
+
+    <button class="locate-btn" onclick="locateUser()" title="定位我的位置">🎯</button>
+
+    <div class="legend">
+        <div><span class="dot" style="background:#2aad27;"></span>舒適 (Chill)</div>
+        <div><span class="dot" style="background:#cb8427;"></span>普通 (Okay)</div>
+        <div><span class="dot" style="background:#ca2828;"></span>擁擠 (Busy)</div>
+        <div><span class="dot" style="background:#777;"></span>未知 (Unknown)</div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // ... (保留你原本 week 2 完成的 javascript 程式碼) ...
+        // ... (包含 init map, fetch data, locateUser, getIcon 等等) ...
+        // 確保 script 內容都在喔！
+        
+        // 為了方便你複製，我把最關鍵的定位函式補在下面，以免你覆蓋時弄丟
+        var map = L.map('map').setView([25.0339, 121.5644], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+        // Icon Definitions
+        var commonSettings = { shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] };
+        var greenIcon = new L.Icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', ...commonSettings});
+        var goldIcon = new L.Icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png', ...commonSettings});
+        var redIcon = new L.Icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', ...commonSettings});
+        var greyIcon = new L.Icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png', ...commonSettings});
+        var userIcon = L.divIcon({ className: 'user-marker', html: '<div style="width: 15px; height: 15px; background: #4285F4; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></div>', iconSize: [20, 20] });
+
+        function getIcon(level) {
+            var lvl = parseInt(level);
+            if (isNaN(lvl) || lvl === 0) return greyIcon;
+            if (lvl <= 2) return greenIcon;
+            if (lvl <= 4) return goldIcon;
+            return redIcon;
+        }
+        
+        function getCrowdStatus(level) {
+            if (level <= 2) return "🟢 舒適";
+            if (level <= 4) return "🟠 普通";
+            if (level >= 5) return "🔴 擁擠";
+            return "⚪ 未知";
+        }
+
+        function locateUser() {
+            if (!navigator.geolocation) { alert("不支援定位"); return; }
+            document.querySelector('.locate-btn').innerHTML = '⏳';
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    map.flyTo([pos.coords.latitude, pos.coords.longitude], 15);
+                    L.marker([pos.coords.latitude, pos.coords.longitude], {icon: userIcon}).addTo(map).bindPopup("<b>📍 我在這裡</b>").openPopup();
+                    document.querySelector('.locate-btn').innerHTML = '🎯';
+                },
+                (err) => { alert("定位失敗"); document.querySelector('.locate-btn').innerHTML = '🎯'; }
+            );
+        }
+
+        fetch('/restaurants').then(r => r.json()).then(data => {
+            data.forEach(r => {
+                var navUrl = `http://googleusercontent.com/maps.google.com/?q=${r.latitude},${r.longitude}`;
+                L.marker([r.latitude, r.longitude], {icon: getIcon(r.crowd_level)}).addTo(map)
+                    .bindPopup(`<b>${r.name}</b><br>⭐ ${r.rating} | ${getCrowdStatus(r.crowd_level)}<br><br><a href="${navUrl}" target="_blank">🚗 導航</a>`);
+            });
+        });
+    </script>
+</body>
+</html>
