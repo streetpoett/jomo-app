@@ -30,7 +30,7 @@ class Restaurant(Base):
     opening_hours = Column(String)  # Stored as text for MVP, can be JSON later
     type = Column(String, default="other") # cafe, food, work, bar
     booking_url = Column(String, nullable=True)
-    reviews = relationship("Review", back_populates="restaurant")
+
 
     # --- 3. Location Data ---
     latitude = Column(Float)
@@ -54,19 +54,3 @@ class Restaurant(Base):
         """
         return f"<Restaurant(name={self.name}, crowd_level={self.crowd_level})>"
     
-class Review(Base):
-    __tablename__ = "reviews"
-
-    id = Column(Integer, primary_key=True, index=True)
-    restaurant_id = Column(Integer, ForeignKey("restaurants.id")) 
-
-    user_name = Column(String, default="匿名綠洲客") 
-    
-    rating = Column(Integer)
-    comment = Column(String, nullable=True) 
-    
-    
-    reported_crowd_level = Column(Integer, nullable=True) 
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-    restaurant = relationship("Restaurant", back_populates="reviews")
