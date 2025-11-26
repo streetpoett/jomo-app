@@ -253,3 +253,14 @@ def seed_database(db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         return {"status": "error", "message": str(e)}
+    
+
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    try:
+        scheduler.shutdown()
+    except Exception:
+        pass
+    logger.info("🛑 Scheduler shut down.")
