@@ -124,17 +124,72 @@ def read_restaurant(restaurant_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Restaurant not found")
     return restaurant
 
-# --- Manual Trigger Endpoints (For Admin) ---
-
 @app.post("/update-data/nearby")
 def update_nearby_restaurants(
-    latitude: float, longitude: float, radius_km: float = 2.0, 
-    force_update: bool = False, db: Session = Depends(get_db)
+    latitude: float, 
+    longitude: float, 
+    radius_km: float = 2.0, 
+    force_update: bool = False, 
+    db: Session = Depends(get_db)
 ):
-    """Triggers a manual update for nearby venues."""
-    # (Logic same as before, simplified for brevity in this final version)
-    # You can paste the previous logic here if needed, or rely on the background scheduler.
-    return {"message": "Manual update triggered (Not fully implemented in this snippet to save space)"}
+    """
+    [Smart Update] Only updates restaurants within a specific radius.
+    """
+    print(f"🚀 Starting smart update around ({latitude}, {longitude}) within {radius_km}km...")
+    
+    all_restaurants = db.query(models.Restaurant).all()
+    target_restaurants = []
+    
+    # 1. Filter targets based on distance and freshness
+    for r in all_restaurants:
+        # Calculate distance
+        dist = calculate_distance(latitude, longitude, r.latitude, r.longitude)
+        
+        if dist <= radius_km:
+            # Check if data is fresh (less than 1 hour old)
+            is_fresh = False
+            if r.updated_at:
+                time_diff = datetime.utcnow() - r.updated_at
+                if time_diff < timedelta(hours=1):
+                    is_fresh = True
+            
+            # Only add to update queue if it's stale or forced
+            if not is_fresh or force_update:
+                target_restaurants.append(r)
+            else:
+                print(f"   ⏭️ Skipping {r.name} (Data is fresh)")
+
+    if not target_restaurants:
+        return {"status": "skipped", "message": "No stale restaurants found in range."}
+
+    print(f"   🎯 Found {len(target_restaurants)} restaurants to update.")
+
+    # 2. Start Scraping
+    scraper = GoogleMapsScraper(headless=True)
+    updated_count = 0
+    
+    try:
+        for r in target_restaurants:
+            print(f"🔄 Updating: {r.name}...")
+            # Tip: Adding address helps Google Maps find the specific branch
+            level = scraper.get_crowd_level(f"{r.name} {r.address}")
+            
+            r.crowd_level = level
+            r.updated_at = datetime.utcnow()
+            db.commit()
+            updated_count += 1
+            print(f"   ✅ {r.name} updated to Level {level}")
+            
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        scraper.close()
+        
+    return {
+        "status": "success", 
+        "message": f"Updated {updated_count} venues within {radius_km}km."
+    }
 
 @app.post("/seed")
 def seed_database(db: Session = Depends(get_db)):
