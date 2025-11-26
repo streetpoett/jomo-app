@@ -293,8 +293,7 @@
                 listContainer.appendChild(item);
             });
         }
-
-        // 3. 打開底部卡片 (核心體驗)
+// 3. 打開底部卡片 (核心體驗 - 訂位升級版)
         function openBottomSheet(r, meta) {
             document.getElementById('sheet-name').innerText = r.name;
             document.getElementById('sheet-type').innerText = r.type ? r.type.toUpperCase() : 'PLACE';
@@ -304,17 +303,32 @@
             badge.className = `status-badge ${meta.colorClass}`;
             badge.innerHTML = `<span class="material-icons-round">analytics</span> ${meta.text} (Level ${r.crowd_level})`;
 
-            // 設定按鈕連結
-            const navUrl = `http://googleusercontent.com/maps.google.com/?q=${r.latitude},${r.longitude}`;
+            // A. 導航按鈕 (不變)
+            const navUrl = `https://www.google.com/maps?q=${r.latitude},${r.longitude}`;
             document.getElementById('btn-nav').onclick = () => window.open(navUrl, '_blank');
             
-            // 處理訂位按鈕
+            // B. 訂位按鈕 (升級邏輯)
             const bookBtn = document.getElementById('btn-book');
+            
+            // 先顯示按鈕 (預設都顯示)
+            bookBtn.style.display = 'flex';
+            
             if (r.booking_url) {
-                bookBtn.style.display = 'flex';
+                // 情境 1: 資料庫有特定連結 (Inline/官網)
+                bookBtn.innerHTML = '<span class="material-icons-round">calendar_today</span> 線上訂位';
+                bookBtn.style.background = '#2c3e50'; // 深色凸顯
+                bookBtn.style.color = 'white';
                 bookBtn.onclick = () => window.open(r.booking_url, '_blank');
             } else {
-                bookBtn.style.display = 'none'; // 沒連結就隱藏
+                // 情境 2: 沒有連結 -> 智慧搜尋 (Smart Search)
+                // 幫使用者去 Google 搜尋 "店名 + 訂位"
+                bookBtn.innerHTML = '<span class="material-icons-round">search</span> 搜尋訂位';
+                bookBtn.style.background = '#f0f0f0'; // 淺色低調
+                bookBtn.style.color = '#333';
+                bookBtn.onclick = () => {
+                    const query = encodeURIComponent(r.name + " 訂位");
+                    window.open(`https://www.google.com/search?q=${query}`, '_blank');
+                };
             }
 
             // 顯示卡片
