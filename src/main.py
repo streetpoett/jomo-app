@@ -300,3 +300,36 @@ def on_shutdown():
         pass
 
     print("🛑 Scheduler shut down (or was not running).")
+
+
+@app.post("/restaurants/{restaurant_id}/reviews", response_model=schemas.ReviewOut)
+def create_review(restaurant_id: int, review: schemas.ReviewCreate, db: Session = Depends(get_db)):
+    """
+    使用者提交評論與回報擁擠度。
+    如果使用者回報了 crowd_level，我們會直接更新餐廳的即時狀態 (Crowdsourcing Power!)
+    """
+    # 1. 找餐廳
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+
+    # 2. 建立評論
+    new_review = models.Review(
+        restaurant_id=restaurant_id,
+        user_name=review.user_name,
+        rating=review.rating,
+        comment=review.comment,
+        reported_crowd_level=review.reported_crowd_level,
+        created_at=datetime.utcnow()
+    )
+    db.add(new_review)
+
+    # 3. 【關鍵邏輯】如果用戶有回報人潮，直接採信並更新主狀態
+    if review.reported_crowd_level is not None:
+        print(f"🚀 用戶回報: {restaurant.name} 目前 Level {review.reported_crowd_level}")
+        restaurant.crowd_level = review.reported_crowd_level
+        restaurant.updated_at = datetime.utcnow() # 更新時間刷平
+
+    db.commit()
+    db.refresh(new_review)
+    return new_review
