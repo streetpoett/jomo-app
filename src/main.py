@@ -191,54 +191,46 @@ def update_nearby_restaurants(
         "message": f"Updated {updated_count} venues within {radius_km}km."
     }
 
+
 @app.post("/seed")
 def seed_database(db: Session = Depends(get_db)):
+    """Inject seed data for Taipei/Taichung with Categories."""
+    
+    if db.query(models.Restaurant).count() > 30:
+        return {"status": "skipped", "message": "資料庫已經很豐富了(>30筆)，跳過注入。"}
 
-    if db.query(models.Restaurant).count() > 0:
-        return {"status": "skipped", "message": "資料庫已經有資料了，跳過注入。"}
-
-    print("🌱 開始注入種子數據...")
 
     initial_data = [
-        {
-            "name": "Starbucks 台北 101 35F",
-            "address": "台北市信義區信義路五段7號35樓",
-            "latitude": 25.033964, "longitude": 121.564472,
-            "place_id": "ChIJmQQiTcupQjQRz5yu0p_u4hQ",
-            "rating": 4.3, "crowd_level": 4
-        },
-        {
-            "name": "一蘭拉麵 台北本店",
-            "address": "台北市信義區松仁路97號",
-            "latitude": 25.035515, "longitude": 121.568296,
-            "place_id": "ChIJ7Qqq0sypQjQR6s-t5C5q6z4",
-            "rating": 4.7, "crowd_level": 5
-        },
-        {
-            "name": "Louisa Coffee 路易莎咖啡 (信義松仁店)",
-            "address": "台北市信義區松仁路100號",
-            "latitude": 25.036123, "longitude": 121.567123,
-            "place_id": "ChIJ_z8_8cqpQjQR8y5x1j2o1fA",
-            "rating": 4.1, "crowd_level": 2
-        },
-        {
-            "name": "宮原眼科 (台中)",
-            "address": "台中市中區中山路20號",
-            "latitude": 24.137512, "longitude": 120.683456,
-            "place_id": "ChIJkb-S4oYZaDQR8s5y2j3o1gB",
-            "rating": 4.6, "crowd_level": 5
-        },
-        {
-            "name": "Solidbean Coffee Roasters (台中)",
-            "address": "台中市西區精誠三街28號",
-            "latitude": 24.156123, "longitude": 120.658123,
-            "place_id": "ChIJlb-S4oYZaDQR9s5y2j3o1gC",
-            "rating": 4.8, "crowd_level": 1
-        }
+        # --- 台北：信義區 ---
+        {"name": "Starbucks 台北 101 35F", "address": "台北市信義區信義路五段7號35樓", "latitude": 25.033964, "longitude": 121.564472, "place_id": "ChIJmQQiTcupQjQRz5yu0p_u4hQ", "rating": 4.3, "crowd_level": 4, "type": "cafe"},
+        {"name": "一蘭拉麵 台北本店", "address": "台北市信義區松仁路97號", "latitude": 25.035515, "longitude": 121.568296, "place_id": "ChIJ7Qqq0sypQjQR6s-t5C5q6z4", "rating": 4.7, "crowd_level": 5, "type": "food"},
+        {"name": "Louisa Coffee 信義松仁", "address": "台北市信義區松仁路100號", "latitude": 25.036123, "longitude": 121.567123, "place_id": "ChIJ_z8_8cqpQjQR8y5x1j2o1fA", "rating": 4.1, "crowd_level": 2, "type": "cafe"},
+        {"name": "蔦屋書店 TSUTAYA BOOKSTORE 信義店", "address": "台北市信義區忠孝東路五段8號", "latitude": 25.039578, "longitude": 121.565893, "place_id": "ChIJL_o_0sypQjQR8s-t5C5q6z4", "rating": 4.5, "crowd_level": 3, "type": "work"},
+
+        # --- 台北：大安/中正區 (適合讀書工作) ---
+        {"name": "國家圖書館", "address": "台北市中正區中山南路20號", "latitude": 25.036660, "longitude": 121.517336, "place_id": "ChIJ7z8_8cqpQjQR8y5x1j2o1fB", "rating": 4.6, "crowd_level": 3, "type": "work"},
+        {"name": "Notch咖啡工廠 站前店", "address": "台北市中正區信陽街6號", "latitude": 25.044123, "longitude": 121.516123, "place_id": "ChIJ8z8_8cqpQjQR8y5x1j2o1fC", "rating": 4.2, "crowd_level": 4, "type": "cafe"},
+        {"name": "Cama Coffee Roasters 豆留森林", "address": "台北市士林區格致路70號", "latitude": 25.134567, "longitude": 121.556789, "place_id": "ChIJ9z8_8cqpQjQR8y5x1j2o1fD", "rating": 4.8, "crowd_level": 2, "type": "cafe"},
+        {"name": "森高砂咖啡館", "address": "台北市大同區延平北路二段1號", "latitude": 25.053123, "longitude": 121.511123, "place_id": "ChIJa8-S4oYZaDQR9s5y2j3o1gE", "rating": 4.7, "crowd_level": 1, "type": "cafe"},
+
+        # --- 台北：中山區 (夜貓/酒吧) ---
+        {"name": "Bar Mood Taipei 吧沐", "address": "台北市大安區敦化南路一段160巷53號", "latitude": 25.043567, "longitude": 121.546789, "place_id": "ChIJb8-S4oYZaDQR9s5y2j3o1gF", "rating": 4.6, "crowd_level": 4, "type": "bar"},
+        {"name": "榕 RON Xinyi", "address": "台北市信義區基隆路二段12號", "latitude": 25.029876, "longitude": 121.557654, "place_id": "ChIJc8-S4oYZaDQR9s5y2j3o1gG", "rating": 4.4, "crowd_level": 3, "type": "bar"},
+
+        # --- 台中：西區/勤美 (文青集散地) ---
+        {"name": "Solidbean Coffee Roasters", "address": "台中市西區精誠三街28號", "latitude": 24.156123, "longitude": 120.658123, "place_id": "ChIJlb-S4oYZaDQR9s5y2j3o1gC", "rating": 4.8, "crowd_level": 1, "type": "cafe"},
+        {"name": "The Factory Mojocoffee", "address": "台中市西區精誠六街22號", "latitude": 24.155432, "longitude": 120.657543, "place_id": "ChIJd8-S4oYZaDQR9s5y2j3o1gH", "rating": 4.5, "crowd_level": 2, "type": "cafe"},
+        {"name": "勤美 誠品綠園道", "address": "台中市西區公益路68號", "latitude": 24.151123, "longitude": 120.663123, "place_id": "ChIJe8-S4oYZaDQR9s5y2j3o1gI", "rating": 4.4, "crowd_level": 5, "type": "work"},
+        
+        # --- 台中：中區/北區 ---
+        {"name": "宮原眼科", "address": "台中市中區中山路20號", "latitude": 24.137512, "longitude": 120.683456, "place_id": "ChIJkb-S4oYZaDQR8s5y2j3o1gB", "rating": 4.6, "crowd_level": 5, "type": "food"},
+        {"name": "屋馬燒肉 中港店", "address": "台中市西屯區台灣大道三段300號", "latitude": 24.165432, "longitude": 120.649876, "place_id": "ChIJf8-S4oYZaDQR9s5y2j3o1gJ", "rating": 4.9, "crowd_level": 5, "type": "food"},
+        {"name": "茶六燒肉堂 朝富店", "address": "台中市西屯區朝富路258號", "latitude": 24.168765, "longitude": 120.638765, "place_id": "ChIJg8-S4oYZaDQR9s5y2j3o1gK", "rating": 4.8, "crowd_level": 5, "type": "food"},
+        {"name": "中央書局", "address": "台中市中區台灣大道一段235號", "latitude": 24.142345, "longitude": 120.679876, "place_id": "ChIJh8-S4oYZaDQR9s5y2j3o1gL", "rating": 4.7, "crowd_level": 1, "type": "work"}
     ]
 
-    added_count = 0
     try:
+        count = 0
         for item in initial_data:
             exists = db.query(models.Restaurant).filter(models.Restaurant.place_id == item["place_id"]).first()
             if not exists:
@@ -253,11 +245,9 @@ def seed_database(db: Session = Depends(get_db)):
                     updated_at=datetime.utcnow()
                 )
                 db.add(new_restaurant)
-                added_count += 1
-        
+                count += 1
         db.commit()
-        return {"status": "success", "message": f"成功注入 {added_count} 筆種子數據！"}
-        
+        return {"status": "success", "message": f"成功注入 {count} 筆新地點！"}
     except Exception as e:
         db.rollback()
         return {"status": "error", "message": str(e)}
