@@ -28,7 +28,8 @@ class Restaurant(Base):
     rating = Column(Float)
     url = Column(String)
     opening_hours = Column(String)  # Stored as text for MVP, can be JSON later
-
+    type = Column(String, default="other") # cafe, food, work, bar
+    
     # --- 3. Location Data ---
     latitude = Column(Float)
     longitude = Column(Float)

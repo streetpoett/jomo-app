@@ -243,6 +243,8 @@ def seed_database(db: Session = Depends(get_db)):
                     rating=item["rating"],
                     crowd_level=item["crowd_level"],
                     updated_at=datetime.utcnow()
+
+                    type=item.get("type", "other")
                 )
                 db.add(new_restaurant)
                 count += 1

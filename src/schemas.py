@@ -12,7 +12,8 @@ class RestaurantBase(BaseModel):
     latitude: float
     longitude: float
     crowd_level: int = 0
-
+    type: Optional[str] = "other"
+    
 # create necessnary structure
 class RestaurantCreate(RestaurantBase):
     place_id: str
