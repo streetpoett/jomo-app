@@ -29,6 +29,7 @@ class Restaurant(Base):
     url = Column(String)
     opening_hours = Column(String)  # Stored as text for MVP, can be JSON later
     type = Column(String, default="other") # cafe, food, work, bar
+    booking_url = Column(String, nullable=True)
     
     # --- 3. Location Data ---
     latitude = Column(Float)
