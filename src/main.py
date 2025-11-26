@@ -242,7 +242,7 @@ def seed_database(db: Session = Depends(get_db)):
                     place_id=item["place_id"],
                     rating=item["rating"],
                     crowd_level=item["crowd_level"],
-                    updated_at=datetime.utcnow()
+                    updated_at=datetime.utcnow(),
 
                     type=item.get("type", "other")
                 )
